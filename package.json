@@ -1,0 +1,15 @@
+{
+  "name": "dd-aminni",
+  "version": "1.0.0",
+  "description": "DD-Aminni - Apartment Logging Web App",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "cd apps/web && npm run dev",
+    "build": "cd apps/web && npm run build",
+    "start": "cd apps/web && npm start"
+  }
+}
