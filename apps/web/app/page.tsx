@@ -159,16 +159,25 @@ export default function Page(){
 									/>
 									
 									{formData.status === 'current' && (
-										<select 
-											value={formData.room}
-											onChange={(e) => setFormData({...formData, room: e.target.value})}
-											style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
-										>
-											<option value="">Select Room</option>
-											<option value="Room 1">Room 1</option>
-											<option value="Room 2">Room 2</option>
-											<option value="Room 3">Room 3</option>
-										</select>
+										<>
+											<select 
+												value={formData.room}
+												onChange={(e) => setFormData({...formData, room: e.target.value})}
+												style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
+											>
+												<option value="">Select Room</option>
+												<option value="Room 1">Room 1</option>
+												<option value="Room 2">Room 2</option>
+												<option value="Room 3">Room 3</option>
+											</select>
+											<input 
+												type="tel" 
+												placeholder="Phone (optional)" 
+												value={formData.phone}
+												onChange={(e) => setFormData({...formData, phone: e.target.value})}
+												style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
+											/>
+										</>
 									)}
 
 									{formData.status === 'former' && (

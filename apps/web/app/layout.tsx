@@ -16,7 +16,7 @@ export default function RootLayout({
         </div>
         <style>{`
           html,body,#__next{height:100%}
-          body{margin:0;font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background-color: black; color: white;}
+          body{margin:0;font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial; background-color: black; color: white;}
         `}</style>
       </body>
     </html>
