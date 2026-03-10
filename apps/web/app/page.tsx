@@ -1,6 +1,6 @@
 "use client";
 
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 
 type Tab = 'family' | 'cleaning' | 'sticky';
 
@@ -40,6 +40,27 @@ function StickyIcon({color}: {color: string}) {
       <polyline points="12 12 12 12"></polyline>
     </svg>
   );
+}
+
+function EditPencilIcon() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+			<path d="M12 20h9"></path>
+			<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+		</svg>
+	);
+}
+
+function DeleteTrashIcon() {
+	return (
+		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+			<polyline points="3 6 5 6 21 6"></polyline>
+			<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path>
+			<path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+			<line x1="10" y1="11" x2="10" y2="17"></line>
+			<line x1="14" y1="11" x2="14" y2="17"></line>
+		</svg>
+	);
 }
 
 function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
@@ -88,22 +109,99 @@ function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
 }
 
 export default function Page(){
+/* INSERT MARKER */
 	const [tab, setTab] = useState<Tab>('family');
 	const [members, setMembers] = useState<FamilyMember[]>([]);
+	const [loadingMembers, setLoadingMembers] = useState(false);
+	const [membersError, setMembersError] = useState('');
 	const [showModal, setShowModal] = useState(false);
 	const [formData, setFormData] = useState<{name:string, room:string, status:'current'|'former', phone:string}>({name:'', room:'', status:'current', phone:''});
 	const [editId, setEditId] = useState<string | null>(null);
 
-	const handleAddMember = () => {
+	useEffect(() => {
+		let isMounted = true;
+		const loadMembers = async () => {
+			setLoadingMembers(true);
+			setMembersError('');
+			try {
+				const response = await fetch('/api/family', { cache: 'no-store' });
+				const data = await response.json();
+				if (!response.ok || !data.ok) {
+					throw new Error(data.error || 'Failed to load members');
+				}
+				if (isMounted) {
+					setMembers((data.members || []).map((m: any) => ({
+						id: m._id,
+						name: m.name,
+						room: m.room,
+						status: m.status,
+						phone: m.phone || '',
+					})));
+				}
+			} catch (err: any) {
+				if (isMounted) {
+					setMembersError(err.message || 'Failed to load members');
+				}
+			} finally {
+				if (isMounted) {
+					setLoadingMembers(false);
+				}
+			}
+		};
+
+		loadMembers();
+		return () => {
+			isMounted = false;
+		};
+	}, []);
+
+	const handleAddMember = async () => {
 		if (!formData.name.trim() || !formData.room) return;
-		if (editId) {
-			setMembers(members.map(m => m.id === editId ? {id: editId, ...formData} : m));
-			setEditId(null);
-		} else {
-			setMembers([...members, {id: Date.now().toString(), ...formData}]);
+
+		try {
+			setMembersError('');
+			if (editId) {
+				const response = await fetch(`/api/family/${editId}`, {
+					method: 'PUT',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(formData),
+				});
+				const data = await response.json();
+				if (!response.ok || !data.ok) {
+					throw new Error(data.error || 'Failed to update member');
+				}
+				setMembers(members.map(m => m.id === editId ? {
+					id: data.member._id || editId,
+					name: data.member.name,
+					room: data.member.room,
+					status: data.member.status,
+					phone: data.member.phone || '',
+				} : m));
+				setEditId(null);
+			} else {
+				const response = await fetch('/api/family', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(formData),
+				});
+				const data = await response.json();
+				if (!response.ok || !data.ok) {
+					throw new Error(data.error || 'Failed to add member');
+				}
+				setMembers([{ 
+					id: data.member._id,
+					name: data.member.name,
+					room: data.member.room,
+					status: data.member.status,
+					phone: data.member.phone || '',
+				}, ...members]);
+			}
+
+			setFormData({name:'', room:'', status:'current', phone:''});
+			setShowModal(false);
+		} catch (err: any) {
+			setMembersError(err.message || 'Failed to save member');
 		}
-		setFormData({name:'', room:'', status:'current', phone:''});
-		setShowModal(false);
 	};
 
 	const handleEdit = (member: FamilyMember) => {
@@ -112,8 +210,20 @@ export default function Page(){
 		setShowModal(true);
 	};
 
-	const handleDelete = (id: string) => {
-		setMembers(members.filter(m => m.id !== id));
+	const handleDelete = async (id: string) => {
+		try {
+			setMembersError('');
+			const response = await fetch(`/api/family/${id}`, {
+				method: 'DELETE',
+			});
+			const data = await response.json();
+			if (!response.ok || !data.ok) {
+				throw new Error(data.error || 'Failed to delete member');
+			}
+			setMembers(members.filter(m => m.id !== id));
+		} catch (err: any) {
+			setMembersError(err.message || 'Failed to delete member');
+		}
 	};
 
 	const handleCloseModal = () => {
@@ -135,6 +245,8 @@ export default function Page(){
 				{tab === 'family' && (
 					<div>
 						<h2 style={{marginTop:0, marginBottom:20}}>Family Members</h2>
+						{loadingMembers && <p style={{color:'#d1d5db', marginTop:0}}>Loading members...</p>}
+						{membersError && <p style={{color:'#f87171', marginTop:0}}>{membersError}</p>}
 
 						{showModal && (
 							<div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', justifyContent:'center', alignItems:'center', zIndex:1000}}>
@@ -232,8 +344,8 @@ export default function Page(){
 												{member.phone && <p style={{margin:0, fontSize:12, color:'#d1d5db'}}>📞 {member.phone}</p>}
 											</div>
 											<div style={{display:'flex', gap:8}}>
-												<button onClick={() => handleEdit(member)} style={{padding:4, background:'#22c55e', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Edit</button>
-												<button onClick={() => handleDelete(member.id)} style={{padding:4, background:'#ef4444', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Delete</button>
+												<button onClick={() => handleEdit(member)} aria-label="Edit member" title="Edit" style={{width:28, height:28, background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><EditPencilIcon /></button>
+												<button onClick={() => handleDelete(member.id)} aria-label="Delete member" title="Delete" style={{width:28, height:28, background:'#ef4444', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><DeleteTrashIcon /></button>
 											</div>
 										</div>
 									</div>
@@ -253,8 +365,8 @@ export default function Page(){
 												{member.phone && <p style={{margin:0, fontSize:12, color:'#d1d5db'}}>📞 {member.phone}</p>}
 											</div>
 											<div style={{display:'flex', gap:8}}>
-												<button onClick={() => handleEdit(member)} style={{padding:4, background:'#22c55e', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Edit</button>
-												<button onClick={() => handleDelete(member.id)} style={{padding:4, background:'#ef4444', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Delete</button>
+												<button onClick={() => handleEdit(member)} aria-label="Edit member" title="Edit" style={{width:28, height:28, background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><EditPencilIcon /></button>
+												<button onClick={() => handleDelete(member.id)} aria-label="Delete member" title="Delete" style={{width:28, height:28, background:'#ef4444', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><DeleteTrashIcon /></button>
 											</div>
 										</div>
 									</div>
