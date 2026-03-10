@@ -280,7 +280,7 @@ export default function Page(){
 					style={{
 						position: 'fixed',
 						bottom: 100,
-						left: 16,
+						right: 16,
 						width: 56,
 						height: 56,
 						background: '#22c55e',
