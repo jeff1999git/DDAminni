@@ -44,9 +44,9 @@ function StickyIcon({color}: {color: string}) {
 
 function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
   const tabs = [
-    {id:'family', label:'Family', icon: FamilyIcon, color:'#6366f1'},
+    {id:'family', label:'Family', icon: FamilyIcon, color:'#22c55e'},
     {id:'cleaning', label:'Cleaning', icon: CleaningIcon, color:'#10b981'},
-    {id:'sticky', label:'Sticky notes', icon: StickyIcon, color:'#f59e0b'},
+    {id:'sticky', label:'Sticky notes', icon: StickyIcon, color:'#84cc16'},
   ];
 
   return (
@@ -57,9 +57,9 @@ function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
       display:'flex',
       justifyContent:'space-around',
       alignItems:'center',
-      borderTop:'1px solid #e5e7eb',
-      background:'#fff',
-      boxShadow:'0 -1px 4px rgba(0,0,0,0.05)'
+      borderTop:'1px solid #374151',
+      background:'black',
+      boxShadow:'0 -1px 4px rgba(0,0,0,0.2)'
     }}>
       {tabs.map(tab => (
         <button 
@@ -75,11 +75,11 @@ function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
             alignItems:'center',
             gap:4,
             cursor:'pointer',
-            color: active === tab.id ? tab.color : '#9ca3af',
+            color: active === tab.id ? tab.color : '#d1d5db',
             transition:'color 0.2s'
           }}
         >
-          <span style={{fontSize:24}}><tab.icon color={active === tab.id ? tab.color : '#9ca3af'} /></span>
+          <span style={{fontSize:24}}><tab.icon color={active === tab.id ? tab.color : '#d1d5db'} /></span>
           <span>{tab.label}</span>
         </button>
       ))}
@@ -91,7 +91,7 @@ export default function Page(){
 	const [tab, setTab] = useState<Tab>('family');
 	const [members, setMembers] = useState<FamilyMember[]>([]);
 	const [showModal, setShowModal] = useState(false);
-	const [formData, setFormData] = useState({name:'', room:'', status:'current' as const, phone:''});
+	const [formData, setFormData] = useState<{name:string, room:string, status:'current'|'former', phone:string}>({name:'', room:'', status:'current', phone:''});
 	const [editId, setEditId] = useState<string | null>(null);
 
 	const handleAddMember = () => {
@@ -107,7 +107,7 @@ export default function Page(){
 	};
 
 	const handleEdit = (member: FamilyMember) => {
-		setFormData(member);
+		setFormData({name: member.name, room: member.room, status: member.status, phone: member.phone || ''});
 		setEditId(member.id);
 		setShowModal(true);
 	};
@@ -134,25 +134,17 @@ export default function Page(){
 			<section style={{minHeight: '60vh'}}>
 				{tab === 'family' && (
 					<div>
-						<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
-							<h2 style={{marginTop:0, marginBottom:0}}>Family Members</h2>
-							<button 
-								onClick={() => setShowModal(true)}
-								style={{padding:'8px 16px', background:'#6366f1', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:14, fontWeight:500}}
-							>
-								+ Add Member
-							</button>
-						</div>
+						<h2 style={{marginTop:0, marginBottom:20}}>Family Members</h2>
 
 						{showModal && (
 							<div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', justifyContent:'center', alignItems:'center', zIndex:1000}}>
-								<div style={{background:'#fff', padding:24, borderRadius:12, width:'90%', maxWidth:400, boxShadow:'0 20px 25px rgba(0,0,0,0.15)'}}>
+								<div style={{background:'black', padding:24, borderRadius:12, width:'90%', maxWidth:400, boxShadow:'0 20px 25px rgba(0,0,0,0.15)'}}>
 									<h3 style={{marginTop:0, marginBottom:16}}>{editId ? 'Edit Member' : 'Add Family Member'}</h3>
 									
 									<select 
 										value={formData.status}
 										onChange={(e) => setFormData({...formData, status: e.target.value as 'current' | 'former'})}
-										style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14}}
+										style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
 									>
 										<option value="current">Current Resident</option>
 										<option value="former">Former Resident</option>
@@ -163,14 +155,14 @@ export default function Page(){
 										placeholder="Name" 
 										value={formData.name}
 										onChange={(e) => setFormData({...formData, name: e.target.value})}
-										style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14}}
+										style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
 									/>
 									
 									{formData.status === 'current' && (
 										<select 
 											value={formData.room}
 											onChange={(e) => setFormData({...formData, room: e.target.value})}
-											style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14}}
+											style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
 										>
 											<option value="">Select Room</option>
 											<option value="Room 1">Room 1</option>
@@ -184,7 +176,7 @@ export default function Page(){
 											<select 
 												value={formData.room}
 												onChange={(e) => setFormData({...formData, room: e.target.value})}
-												style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14}}
+												style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
 											>
 												<option value="">Select Room</option>
 												<option value="Room 1">Room 1</option>
@@ -196,7 +188,7 @@ export default function Page(){
 												placeholder="Phone (optional)" 
 												value={formData.phone}
 												onChange={(e) => setFormData({...formData, phone: e.target.value})}
-												style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14}}
+												style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
 											/>
 										</>
 									)}
@@ -204,13 +196,13 @@ export default function Page(){
 									<div style={{display:'flex', gap:12}}>
 										<button 
 											onClick={handleAddMember}
-											style={{flex:1, padding:10, background:'#6366f1', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:14, fontWeight:500}}
+											style={{flex:1, padding:10, background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:14, fontWeight:500}}
 										>
 											{editId ? 'Update' : 'Add'}
 										</button>
 										<button 
 											onClick={handleCloseModal}
-											style={{flex:1, padding:10, background:'#e5e7eb', color:'#1f2937', border:'none', borderRadius:6, cursor:'pointer', fontSize:14, fontWeight:500}}
+											style={{flex:1, padding:10, background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:14, fontWeight:500}}
 										>
 											Cancel
 										</button>
@@ -223,15 +215,15 @@ export default function Page(){
 							<div style={{marginBottom:20}}>
 								<h3 style={{color:'#10b981', marginBottom:12}}>Current Residents ({currentMembers.length})</h3>
 								{currentMembers.map(member => (
-									<div key={member.id} style={{background:'#ecfdf5', padding:12, marginBottom:8, borderRadius:6, borderLeft:'4px solid #10b981'}}>
+									<div key={member.id} style={{background:'#1f2937', padding:12, marginBottom:8, borderRadius:6, borderLeft:'4px solid #10b981'}}>
 										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
 											<div style={{flex:1}}>
 												<p style={{margin:'0 0 4px 0', fontWeight:500}}>{member.name}</p>
-												<p style={{margin:'0 0 4px 0', fontSize:12, color:'#6b7280'}}>{member.room}</p>
-												{member.phone && <p style={{margin:0, fontSize:12, color:'#6b7280'}}>📞 {member.phone}</p>}
+												<p style={{margin:'0 0 4px 0', fontSize:12, color:'#d1d5db'}}>{member.room}</p>
+												{member.phone && <p style={{margin:0, fontSize:12, color:'#d1d5db'}}>📞 {member.phone}</p>}
 											</div>
 											<div style={{display:'flex', gap:8}}>
-												<button onClick={() => handleEdit(member)} style={{padding:4, background:'#6366f1', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Edit</button>
+												<button onClick={() => handleEdit(member)} style={{padding:4, background:'#22c55e', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Edit</button>
 												<button onClick={() => handleDelete(member.id)} style={{padding:4, background:'#ef4444', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Delete</button>
 											</div>
 										</div>
@@ -242,17 +234,17 @@ export default function Page(){
 
 						{formerMembers.length > 0 && (
 							<div>
-								<h3 style={{color:'#9ca3af', marginBottom:12}}>Former Residents ({formerMembers.length})</h3>
+								<h3 style={{color:'#d1d5db', marginBottom:12}}>Former Residents ({formerMembers.length})</h3>
 								{formerMembers.map(member => (
-									<div key={member.id} style={{background:'#f3f4f6', padding:12, marginBottom:8, borderRadius:6, borderLeft:'4px solid #9ca3af', opacity:0.7}}>
+									<div key={member.id} style={{background:'#374151', padding:12, marginBottom:8, borderRadius:6, borderLeft:'4px solid #9ca3af', opacity:0.7}}>
 										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
 											<div style={{flex:1}}>
 												<p style={{margin:'0 0 4px 0', fontWeight:500}}>{member.name}</p>
-												<p style={{margin:'0 0 4px 0', fontSize:12, color:'#6b7280'}}>{member.room}</p>
-												{member.phone && <p style={{margin:0, fontSize:12, color:'#6b7280'}}>📞 {member.phone}</p>}
+												<p style={{margin:'0 0 4px 0', fontSize:12, color:'#d1d5db'}}>{member.room}</p>
+												{member.phone && <p style={{margin:0, fontSize:12, color:'#d1d5db'}}>📞 {member.phone}</p>}
 											</div>
 											<div style={{display:'flex', gap:8}}>
-												<button onClick={() => handleEdit(member)} style={{padding:4, background:'#6366f1', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Edit</button>
+												<button onClick={() => handleEdit(member)} style={{padding:4, background:'#22c55e', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Edit</button>
 												<button onClick={() => handleDelete(member.id)} style={{padding:4, background:'#ef4444', color:'#fff', border:'none', borderRadius:3, cursor:'pointer', fontSize:12}}>Delete</button>
 											</div>
 										</div>
@@ -262,7 +254,7 @@ export default function Page(){
 						)}
 
 						{members.length === 0 && (
-							<p style={{color:'#9ca3af', textAlign:'center', marginTop:40}}>No family members added yet</p>
+							<p style={{color:'#d1d5db', textAlign:'center', marginTop:40}}>No family members added yet</p>
 						)}
 					</div>
 				)}
@@ -281,6 +273,33 @@ export default function Page(){
 					</div>
 				)}
 			</section>
+
+			{tab === 'family' && (
+				<button 
+					onClick={() => setShowModal(true)}
+					style={{
+						position: 'fixed',
+						bottom: 100,
+						left: 16,
+						width: 56,
+						height: 56,
+						background: '#22c55e',
+						color: '#fff',
+						border: 'none',
+						borderRadius: '50%',
+						cursor: 'pointer',
+						fontSize: 24,
+						fontWeight: 'bold',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+						zIndex: 10
+					}}
+				>
+					+
+				</button>
+			)}
 
 			<BottomNav active={tab} onChange={setTab} />
 		</main>
