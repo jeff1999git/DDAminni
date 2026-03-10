@@ -12,6 +12,15 @@ type FamilyMember = {
   phone?: string;
 };
 
+type CleaningArea = 'dining' | 'living' | 'kitchen';
+
+type CleaningRecord = {
+  area: CleaningArea;
+  assignedRoom: string;
+  completed: boolean;
+  completedAt?: string | null;
+};
+
 function FamilyIcon({color}: {color: string}) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,6 +72,47 @@ function DeleteTrashIcon() {
 	);
 }
 
+const CLEANING_META: Record<CleaningArea, {icon: string; label: string}> = {
+  dining: {icon: '🍽️', label: 'Dining Room'},
+  living: {icon: '🛋️', label: 'Living Room'},
+  kitchen: {icon: '🍳', label: 'Kitchen'},
+};
+
+function getISOWeekId(date: Date): string {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayOfWeek = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayOfWeek);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNum = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${d.getUTCFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+function getWeekLabel(weekId: string): string {
+  const [yearStr, weekStr] = weekId.split('-W');
+  const year = parseInt(yearStr);
+  const week = parseInt(weekStr);
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const dayOfJan4 = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - dayOfJan4 + 1 + (week - 1) * 7);
+  const fullMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthName = fullMonths[monday.getUTCMonth()];
+  const weekOfMonth = Math.ceil(monday.getUTCDate() / 7);
+  const ordinals = ['','1st','2nd','3rd','4th','5th'];
+  return `${monthName} ${ordinals[weekOfMonth]} Week`;
+}
+
+function shiftWeek(weekId: string, delta: number): string {
+  const [yearStr, weekStr] = weekId.split('-W');
+  const year = parseInt(yearStr);
+  const week = parseInt(weekStr);
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const dayOfJan4 = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - dayOfJan4 + 1 + (week - 1) * 7 + delta * 7);
+  return getISOWeekId(monday);
+}
+
 function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
   const tabs = [
     {id:'family', label:'Family', icon: FamilyIcon, color:'#22c55e'},
@@ -109,7 +159,6 @@ function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
 }
 
 export default function Page(){
-/* INSERT MARKER */
 	const [tab, setTab] = useState<Tab>('family');
 	const [members, setMembers] = useState<FamilyMember[]>([]);
 	const [loadingMembers, setLoadingMembers] = useState(false);
@@ -117,6 +166,10 @@ export default function Page(){
 	const [showModal, setShowModal] = useState(false);
 	const [formData, setFormData] = useState<{name:string, room:string, status:'current'|'former', phone:string}>({name:'', room:'', status:'current', phone:''});
 	const [editId, setEditId] = useState<string | null>(null);
+	const [cleaningWeek, setCleaningWeek] = useState(() => getISOWeekId(new Date()));
+	const [cleaningSchedule, setCleaningSchedule] = useState<CleaningRecord[]>([]);
+	const [loadingCleaning, setLoadingCleaning] = useState(false);
+	const [cleaningError, setCleaningError] = useState('');
 
 	useEffect(() => {
 		let isMounted = true;
@@ -154,6 +207,27 @@ export default function Page(){
 			isMounted = false;
 		};
 	}, []);
+
+	useEffect(() => {
+		if (tab !== 'cleaning') return;
+		let isMounted = true;
+		const loadCleaning = async () => {
+			setLoadingCleaning(true);
+			setCleaningError('');
+			try {
+				const res = await fetch(`/api/cleaning?week=${cleaningWeek}`, { cache: 'no-store' });
+				const data = await res.json();
+				if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load cleaning schedule');
+				if (isMounted) setCleaningSchedule(data.schedule || []);
+			} catch (err: any) {
+				if (isMounted) setCleaningError(err.message || 'Failed to load cleaning schedule');
+			} finally {
+				if (isMounted) setLoadingCleaning(false);
+			}
+		};
+		loadCleaning();
+		return () => { isMounted = false; };
+	}, [tab, cleaningWeek]);
 
 	const handleAddMember = async () => {
 		if (!formData.name.trim() || !formData.room) return;
@@ -230,6 +304,24 @@ export default function Page(){
 		setShowModal(false);
 		setEditId(null);
 		setFormData({name:'', room:'', status:'current', phone:''});
+	};
+
+	const handleCleaningToggle = async (area: CleaningArea) => {
+		const current = cleaningSchedule.find(r => r.area === area);
+		const newCompleted = !(current?.completed ?? false);
+		setCleaningError('');
+		try {
+			const res = await fetch('/api/cleaning', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ weekId: cleaningWeek, area, completed: newCompleted }),
+			});
+			const data = await res.json();
+			if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to update');
+			setCleaningSchedule(prev => prev.map(r => r.area === area ? { ...r, completed: newCompleted, completedAt: newCompleted ? new Date().toISOString() : null } : r));
+		} catch (err: any) {
+			setCleaningError(err.message || 'Failed to update cleaning status');
+		}
 	};
 
 	const currentMembers = members.filter(m => m.status === 'current');
@@ -382,8 +474,61 @@ export default function Page(){
 
 				{tab === 'cleaning' && (
 					<div>
-						<h2>Cleaning</h2>
-						<p>Track cleaning schedules, logs, and supplies.</p>
+						<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
+							<button
+								onClick={() => setCleaningWeek(prev => shiftWeek(prev, -1))}
+								style={{padding:'6px 14px', background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:13}}
+							>← Prev</button>
+							<p style={{margin:0, fontSize:13, fontWeight:600, textAlign:'center', flex:1}}>{getWeekLabel(cleaningWeek)}</p>
+							<button
+								onClick={() => setCleaningWeek(prev => shiftWeek(prev, 1))}
+								style={{padding:'6px 14px', background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:13}}
+							>Next →</button>
+						</div>
+						{loadingCleaning && <p style={{color:'#d1d5db', textAlign:'center'}}>Loading schedule...</p>}
+						{cleaningError && <p style={{color:'#f87171'}}>{cleaningError}</p>}
+						{cleaningSchedule.map(record => {
+							const meta = CLEANING_META[record.area];
+							const assignedMember = members.find(m => m.room === record.assignedRoom && m.status === 'current');
+							return (
+								<div key={record.area} style={{
+									background: record.completed ? '#052e16' : '#1f2937',
+									padding:16,
+									marginBottom:12,
+									borderRadius:8,
+									borderLeft: `4px solid ${record.completed ? '#22c55e' : '#4b5563'}`,
+								}}>
+									<div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+										<div>
+											<p style={{margin:'0 0 4px 0', fontSize:16, fontWeight:600}}>{meta.icon} {meta.label}</p>
+											<p style={{margin:'0 0 2px 0', fontSize:13, color:'#9ca3af'}}>{record.assignedRoom}</p>
+											<p style={{margin:0, fontSize:12, color: assignedMember ? '#d1d5db' : '#6b7280'}}>
+												{assignedMember ? assignedMember.name : 'No current resident'}
+											</p>
+										</div>
+										<button
+											onClick={() => handleCleaningToggle(record.area)}
+											style={{
+												padding:'8px 14px',
+												background: record.completed ? '#22c55e' : '#374151',
+												color: record.completed ? '#fff' : '#d1d5db',
+												border:'none',
+												borderRadius:20,
+												cursor:'pointer',
+												fontSize:13,
+												fontWeight:500,
+												whiteSpace:'nowrap',
+											}}
+										>
+											{record.completed ? '✓ Done' : 'Mark Done'}
+										</button>
+									</div>
+								</div>
+							);
+						})}
+						{!loadingCleaning && cleaningSchedule.length === 0 && !cleaningError && (
+							<p style={{color:'#d1d5db', textAlign:'center', marginTop:40}}>No schedule available</p>
+						)}
 					</div>
 				)}
 
