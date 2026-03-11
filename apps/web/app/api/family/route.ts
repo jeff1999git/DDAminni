@@ -17,13 +17,17 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, room, status, phone } = body || {};
 
-    if (!name || !room || !status) {
-      return Response.json({ ok: false, error: 'name, room, and status are required' }, { status: 400 });
+    if (!name || !status) {
+      return Response.json({ ok: false, error: 'name and status are required' }, { status: 400 });
+    }
+
+    if (status === 'current' && !room) {
+      return Response.json({ ok: false, error: 'room is required for current residents' }, { status: 400 });
     }
 
     const created = await FamilyMemberModel.create({
       name,
-      room,
+      room: status === 'former' ? '' : room,
       status,
       phone: phone || '',
     });

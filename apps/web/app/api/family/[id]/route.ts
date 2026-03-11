@@ -7,13 +7,17 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const body = await request.json();
     const { name, room, status, phone } = body || {};
 
-    if (!name || !room || !status) {
-      return Response.json({ ok: false, error: 'name, room, and status are required' }, { status: 400 });
+    if (!name || !status) {
+      return Response.json({ ok: false, error: 'name and status are required' }, { status: 400 });
+    }
+
+    if (status === 'current' && !room) {
+      return Response.json({ ok: false, error: 'room is required for current residents' }, { status: 400 });
     }
 
     const updated = await FamilyMemberModel.findByIdAndUpdate(
       params.id,
-      { name, room, status, phone: phone || '' },
+      { name, room: status === 'former' ? '' : room, status, phone: phone || '' },
       { new: true }
     ).lean();
 

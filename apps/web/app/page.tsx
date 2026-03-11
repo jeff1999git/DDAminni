@@ -21,6 +21,13 @@ type CleaningRecord = {
   completedAt?: string | null;
 };
 
+type StickyNote = {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+};
+
 function FamilyIcon({color}: {color: string}) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -166,10 +173,16 @@ export default function Page(){
 	const [showModal, setShowModal] = useState(false);
 	const [formData, setFormData] = useState<{name:string, room:string, status:'current'|'former', phone:string}>({name:'', room:'', status:'current', phone:''});
 	const [editId, setEditId] = useState<string | null>(null);
+	const [expandedRoom, setExpandedRoom] = useState<string | null>(null);
 	const [cleaningWeek, setCleaningWeek] = useState(() => getISOWeekId(new Date()));
 	const [cleaningSchedule, setCleaningSchedule] = useState<CleaningRecord[]>([]);
 	const [loadingCleaning, setLoadingCleaning] = useState(false);
 	const [cleaningError, setCleaningError] = useState('');
+	const [stickyNotes, setStickyNotes] = useState<StickyNote[]>([]);
+	const [loadingStickyNotes, setLoadingStickyNotes] = useState(false);
+	const [stickyNotesError, setStickyNotesError] = useState('');
+	const [stickyFormData, setStickyFormData] = useState({name:'', description:''});
+	const [showStickyModal, setShowStickyModal] = useState(false);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -229,8 +242,37 @@ export default function Page(){
 		return () => { isMounted = false; };
 	}, [tab, cleaningWeek]);
 
+	useEffect(() => {
+		if (tab !== 'sticky') return;
+		let isMounted = true;
+		const loadStickyNotes = async () => {
+			setLoadingStickyNotes(true);
+			setStickyNotesError('');
+			try {
+				const res = await fetch('/api/sticky', { cache: 'no-store' });
+				const data = await res.json();
+				if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to load notes');
+				if (isMounted) {
+					const notes = (data.notes || []).map((n: any) => ({
+						id: n._id,
+						name: n.name,
+						description: n.description,
+						createdAt: new Date(n.createdAt).toLocaleDateString(),
+					}));
+					setStickyNotes(notes);
+				}
+			} catch (err: any) {
+				if (isMounted) setStickyNotesError(err.message || 'Failed to load notes');
+			} finally {
+				if (isMounted) setLoadingStickyNotes(false);
+			}
+		};
+		loadStickyNotes();
+		return () => { isMounted = false; };
+	}, [tab]);
+
 	const handleAddMember = async () => {
-		if (!formData.name.trim() || !formData.room) return;
+		if (!formData.name.trim() || (formData.status === 'current' && !formData.room)) return;
 
 		try {
 			setMembersError('');
@@ -279,7 +321,7 @@ export default function Page(){
 	};
 
 	const handleEdit = (member: FamilyMember) => {
-		setFormData({name: member.name, room: member.room, status: member.status, phone: member.phone || ''});
+		setFormData({name: member.name, room: member.status === 'current' ? member.room : '', status: member.status, phone: member.phone || ''});
 		setEditId(member.id);
 		setShowModal(true);
 	};
@@ -297,6 +339,49 @@ export default function Page(){
 			setMembers(members.filter(m => m.id !== id));
 		} catch (err: any) {
 			setMembersError(err.message || 'Failed to delete member');
+		}
+	};
+
+	const handleAddStickyNote = async () => {
+		if (!stickyFormData.name || !stickyFormData.description.trim()) return;
+		setStickyNotesError('');
+		try {
+			const res = await fetch('/api/sticky', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(stickyFormData),
+			});
+			const data = await res.json();
+			if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to add note');
+			const newNote: StickyNote = {
+				id: data.note._id,
+				name: data.note.name,
+				description: data.note.description,
+				createdAt: new Date(data.note.createdAt).toLocaleDateString(),
+			};
+			setStickyNotes([newNote, ...stickyNotes]);
+			setStickyFormData({name:'', description:''});
+			setShowStickyModal(false);
+		} catch (err: any) {
+			setStickyNotesError(err.message || 'Failed to add note');
+		}
+	};
+
+	const handleCloseStickyModal = () => {
+		setShowStickyModal(false);
+		setStickyFormData({name:'', description:''});
+		setStickyNotesError('');
+	};
+
+	const handleDeleteStickyNote = async (id: string) => {
+		setStickyNotesError('');
+		try {
+			const res = await fetch(`/api/sticky/${id}`, { method: 'DELETE' });
+			const data = await res.json();
+			if (!res.ok || !data.ok) throw new Error(data.error || 'Failed to delete note');
+			setStickyNotes(stickyNotes.filter(n => n.id !== id));
+		} catch (err: any) {
+			setStickyNotesError(err.message || 'Failed to delete note');
 		}
 	};
 
@@ -324,13 +409,11 @@ export default function Page(){
 		}
 	};
 
-	const currentMembers = members.filter(m => m.status === 'current');
-	const formerMembers = members.filter(m => m.status === 'former');
-
 	return (
 		<main style={{paddingBottom: 100, paddingTop:20, paddingLeft:16, paddingRight:16}}>
 			<header style={{marginBottom:18}}>
-				<h1 style={{margin:0,fontSize:20}}>DD-Aminni</h1>
+				<h1 style={{margin:0,fontSize:20}}>DD അമ്മിണി</h1>
+				<p style={{margin:'4px 0 0 0', fontSize:13, color:'#9ca3af'}}>115 A Cleaning Assistant</p>
 			</header>
 
 			<section style={{minHeight: '60vh'}}>
@@ -380,30 +463,8 @@ export default function Page(){
 												value={formData.phone}
 												onChange={(e) => setFormData({...formData, phone: e.target.value})}
 												style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
-											/>
-										</>
-									)}
-
-									{formData.status === 'former' && (
-										<>
-											<select 
-												value={formData.room}
-												onChange={(e) => setFormData({...formData, room: e.target.value})}
-												style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
-											>
-												<option value="">Select Room</option>
-												<option value="Room 1">Room 1</option>
-												<option value="Room 2">Room 2</option>
-												<option value="Room 3">Room 3</option>
-											</select>
-											<input 
-												type="tel" 
-												placeholder="Phone (optional)" 
-												value={formData.phone}
-												onChange={(e) => setFormData({...formData, phone: e.target.value})}
-												style={{width:'100%', padding:10, marginBottom:16, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
-											/>
-										</>
+										/>
+									</>
 									)}
 									
 									<div style={{display:'flex', gap:12}}>
@@ -424,47 +485,122 @@ export default function Page(){
 							</div>
 						)}
 
-						{currentMembers.length > 0 && (
-							<div style={{marginBottom:20}}>
-								<h3 style={{color:'#10b981', marginBottom:12}}>Current Residents ({currentMembers.length})</h3>
-								{currentMembers.map(member => (
-									<div key={member.id} style={{background:'#1f2937', padding:12, marginBottom:8, borderRadius:6, borderLeft:'4px solid #10b981'}}>
-										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
-											<div style={{flex:1}}>
-												<p style={{margin:'0 0 4px 0', fontWeight:500}}>{member.name}</p>
-												<p style={{margin:'0 0 4px 0', fontSize:12, color:'#d1d5db'}}>{member.room}</p>
-												{member.phone && <p style={{margin:0, fontSize:12, color:'#d1d5db'}}>📞 {member.phone}</p>}
+						{/* Room-based view */}
+						<div>
+							{['Room 1', 'Room 2', 'Room 3'].map(room => {
+								const roomMembers = members.filter(m => m.room === room && m.status === 'current');
+								const isExpanded = expandedRoom === room;
+								return (
+									<div key={room} style={{marginBottom:16}}>
+										<button
+											onClick={() => setExpandedRoom(isExpanded ? null : room)}
+											style={{
+												width:'100%',
+												background:'#1f2937',
+												padding:14,
+												border:'none',
+												borderRadius:8,
+												borderLeft: `4px solid #10b981`,
+												textAlign:'left',
+												cursor:'pointer',
+												display:'flex',
+												justifyContent:'space-between',
+												alignItems:'center'
+											}}
+										>
+											<div>
+												<p style={{margin:0, fontWeight:600, color:'white', marginBottom:4}}>{room}</p>
+												<p style={{margin:0, fontSize:12, color:'#9ca3af'}}>
+													{roomMembers.length === 0 ? 'No members' : roomMembers.map(m => m.name.split(' ')[0]).join(', ')}
+												</p>
 											</div>
-											<div style={{display:'flex', gap:8}}>
-												<button onClick={() => handleEdit(member)} aria-label="Edit member" title="Edit" style={{width:28, height:28, background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><EditPencilIcon /></button>
-												<button onClick={() => handleDelete(member.id)} aria-label="Delete member" title="Delete" style={{width:28, height:28, background:'#ef4444', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><DeleteTrashIcon /></button>
+											<span style={{color:'#22c55e', fontSize:18}}>
+												{isExpanded ? '−' : '+'}
+											</span>
+										</button>
+										
+										{isExpanded && (
+											<div style={{background:'#374151', marginTop:0, borderRadius: '0 0 8px 8px', padding:12}}>
+												{roomMembers.length === 0 ? (
+													<p style={{margin:0, fontSize:13, color:'#9ca3af'}}>No members in this room</p>
+												) : (
+													roomMembers.map(member => (
+														<div key={member.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #4b5563'}}>
+															<div style={{flex:1}}>
+																<p style={{margin:0, fontWeight:500, color:'white'}}>{member.name}</p>
+																<p style={{margin:'2px 0 0 0', fontSize:12, color:'#d1d5db'}}>
+																	{member.status === 'current' ? 'Current' : 'Former'}
+																</p>
+															</div>
+															<div style={{display:'flex', gap:6}}>
+																<button onClick={() => handleEdit(member)} aria-label="Edit member" title="Edit" style={{width:28, height:28, background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><EditPencilIcon /></button>
+																<button onClick={() => handleDelete(member.id)} aria-label="Delete member" title="Delete" style={{width:28, height:28, background:'#ef4444', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><DeleteTrashIcon /></button>
+															</div>
+														</div>
+													))
+												)}
 											</div>
-										</div>
+										)}
 									</div>
-								))}
-							</div>
-						)}
+								);
+							})}
 
-						{formerMembers.length > 0 && (
-							<div>
-								<h3 style={{color:'#d1d5db', marginBottom:12}}>Former Residents ({formerMembers.length})</h3>
-								{formerMembers.map(member => (
-									<div key={member.id} style={{background:'#374151', padding:12, marginBottom:8, borderRadius:6, borderLeft:'4px solid #9ca3af', opacity:0.7}}>
-										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
-											<div style={{flex:1}}>
-												<p style={{margin:'0 0 4px 0', fontWeight:500}}>{member.name}</p>
-												<p style={{margin:'0 0 4px 0', fontSize:12, color:'#d1d5db'}}>{member.room}</p>
-												{member.phone && <p style={{margin:0, fontSize:12, color:'#d1d5db'}}>📞 {member.phone}</p>}
+							{(() => {
+								const formerMembers = members.filter(m => m.status === 'former');
+								const isExpanded = expandedRoom === 'Former Members';
+								return (
+									<div style={{marginBottom:16}}>
+										<button
+											onClick={() => setExpandedRoom(isExpanded ? null : 'Former Members')}
+											style={{
+												width:'100%',
+												background:'#1f2937',
+												padding:14,
+												border:'none',
+												borderRadius:8,
+												borderLeft: `4px solid #9ca3af`,
+												textAlign:'left',
+												cursor:'pointer',
+												display:'flex',
+												justifyContent:'space-between',
+												alignItems:'center'
+											}}
+										>
+											<div>
+												<p style={{margin:0, fontWeight:600, color:'white', marginBottom:4}}>Former Members</p>
+												<p style={{margin:0, fontSize:12, color:'#9ca3af'}}>
+													{formerMembers.length === 0 ? 'No members' : formerMembers.map(m => m.name.split(' ')[0]).join(', ')}
+												</p>
 											</div>
-											<div style={{display:'flex', gap:8}}>
-												<button onClick={() => handleEdit(member)} aria-label="Edit member" title="Edit" style={{width:28, height:28, background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><EditPencilIcon /></button>
-												<button onClick={() => handleDelete(member.id)} aria-label="Delete member" title="Delete" style={{width:28, height:28, background:'#ef4444', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><DeleteTrashIcon /></button>
+											<span style={{color:'#22c55e', fontSize:18}}>
+												{isExpanded ? '−' : '+'}
+											</span>
+										</button>
+
+										{isExpanded && (
+											<div style={{background:'#374151', marginTop:0, borderRadius: '0 0 8px 8px', padding:12}}>
+												{formerMembers.length === 0 ? (
+													<p style={{margin:0, fontSize:13, color:'#9ca3af'}}>No former members added</p>
+												) : (
+													formerMembers.map(member => (
+														<div key={member.id} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid #4b5563'}}>
+															<div style={{flex:1}}>
+																<p style={{margin:0, fontWeight:500, color:'white'}}>{member.name}</p>
+																<p style={{margin:'2px 0 0 0', fontSize:12, color:'#d1d5db'}}>Former</p>
+															</div>
+															<div style={{display:'flex', gap:6}}>
+																<button onClick={() => handleEdit(member)} aria-label="Edit member" title="Edit" style={{width:28, height:28, background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><EditPencilIcon /></button>
+																<button onClick={() => handleDelete(member.id)} aria-label="Delete member" title="Delete" style={{width:28, height:28, background:'#ef4444', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}><DeleteTrashIcon /></button>
+															</div>
+														</div>
+													))
+												)}
 											</div>
-										</div>
+										)}
 									</div>
-								))}
-							</div>
-						)}
+								);
+							})()}
+						</div>
 
 						{members.length === 0 && (
 							<p style={{color:'#d1d5db', textAlign:'center', marginTop:40}}>No family members added yet</p>
@@ -534,8 +670,74 @@ export default function Page(){
 
 				{tab === 'sticky' && (
 					<div>
-						<h2>Sticky notes</h2>
-						<p>Short notes and reminders for the household.</p>
+						<h2 style={{marginTop:0, marginBottom:20}}>Sticky Notes</h2>
+
+						{showStickyModal && (
+							<div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.5)', display:'flex', justifyContent:'center', alignItems:'center', zIndex:1000}}>
+								<div style={{background:'black', padding:24, borderRadius:12, width:'90%', maxWidth:400, boxShadow:'0 20px 25px rgba(0,0,0,0.15)'}}>
+									<h3 style={{marginTop:0, marginBottom:16}}>Add Sticky Note</h3>
+									
+								<select 
+									value={stickyFormData.name}
+									onChange={(e) => setStickyFormData({...stickyFormData, name: e.target.value})}
+									style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
+								>
+									<option value="">Select Member</option>
+									{members.map(member => (
+										<option key={member.id} value={member.name}>{member.name}</option>
+									))}
+								</select>
+									
+									<textarea
+										placeholder="Description (max 500 chars)"
+										value={stickyFormData.description}
+										onChange={(e) => setStickyFormData({...stickyFormData, description: e.target.value.slice(0, 500)})}
+										style={{width:'100%', padding:10, marginBottom:12, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white', minHeight:100, fontFamily:'system-ui, sans-serif', resize:'none'}}
+									/>
+									<p style={{margin:'0 0 16px 0', fontSize:12, color:'#9ca3af'}}>{stickyFormData.description.length}/500</p>
+
+									{stickyNotesError && <p style={{color:'#f87171', margin:'0 0 12px 0', fontSize:13}}>{stickyNotesError}</p>}
+									
+									<div style={{display:'flex', gap:12}}>
+										<button 
+											onClick={handleAddStickyNote}
+											disabled={!stickyFormData.name || !stickyFormData.description.trim()}
+											style={{flex:1, padding:10, background:(!stickyFormData.name || !stickyFormData.description.trim()) ? '#6b7280' : '#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:(!stickyFormData.name || !stickyFormData.description.trim()) ? 'not-allowed' : 'pointer', fontSize:14, fontWeight:500}}
+										>
+											Add
+										</button>
+										<button 
+											onClick={handleCloseStickyModal}
+											style={{flex:1, padding:10, background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:14, fontWeight:500}}
+										>
+											Cancel
+										</button>
+									</div>
+								</div>
+							</div>
+						)}
+
+						{loadingStickyNotes && <p style={{color:'#d1d5db', textAlign:'center'}}>Loading notes...</p>}
+						{stickyNotes.map(note => (
+							<div key={note.id} style={{background:'#fbbf24', padding:14, marginBottom:12, borderRadius:6, position:'relative'}}>
+								<div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start'}}>
+									<div style={{flex:1, paddingRight:10}}>
+										<p style={{margin:'0 0 6px 0', fontSize:14, fontWeight:600, color:'#1f2937'}}>{note.name}</p>
+										<p style={{margin:'0 0 6px 0', fontSize:13, color:'#374151', whiteSpace:'pre-wrap', wordBreak:'break-word'}}>{note.description}</p>
+										<p style={{margin:0, fontSize:11, color:'#5a4900'}}>{note.createdAt}</p>
+									</div>
+									<button
+										onClick={() => handleDeleteStickyNote(note.id)}
+										style={{width:28, height:28, background:'#ef4444', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:14, fontWeight:'bold'}}
+									>
+										×
+									</button>
+								</div>
+							</div>
+						))}
+						{!loadingStickyNotes && stickyNotes.length === 0 && !stickyNotesError && (
+							<p style={{color:'#d1d5db', textAlign:'center', marginTop:40}}>No sticky notes yet. Tap the + button to add one!</p>
+						)}
 					</div>
 				)}
 			</section>
@@ -550,6 +752,33 @@ export default function Page(){
 						width: 56,
 						height: 56,
 						background: '#22c55e',
+						color: '#fff',
+						border: 'none',
+						borderRadius: '50%',
+						cursor: 'pointer',
+						fontSize: 24,
+						fontWeight: 'bold',
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
+						zIndex: 10
+					}}
+				>
+					+
+				</button>
+			)}
+
+			{tab === 'sticky' && (
+				<button 
+					onClick={() => setShowStickyModal(true)}
+					style={{
+						position: 'fixed',
+						bottom: 100,
+						right: 16,
+						width: 56,
+						height: 56,
+						background: '#84cc16',
 						color: '#fff',
 						border: 'none',
 						borderRadius: '50%',

@@ -15,7 +15,7 @@ export interface FamilyMemberDoc {
 const FamilyMemberSchema = new Schema<FamilyMemberDoc>(
   {
     name: { type: String, required: true, trim: true },
-    room: { type: String, required: true, trim: true },
+    room: { type: String, trim: true, default: '' },
     status: { type: String, enum: ['current', 'former'], required: true },
     phone: { type: String, trim: true, default: '' },
   },
