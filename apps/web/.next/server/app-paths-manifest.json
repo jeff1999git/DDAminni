@@ -1,7 +1,0 @@
-{
-  "/api/cleaning/route": "app/api/cleaning/route.js",
-  "/api/sticky/route": "app/api/sticky/route.js",
-  "/page": "app/page.js",
-  "/api/family/route": "app/api/family/route.js",
-  "/api/family/[id]/route": "app/api/family/[id]/route.js"
-}
