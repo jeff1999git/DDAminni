@@ -120,6 +120,14 @@ function shiftWeek(weekId: string, delta: number): string {
   return getISOWeekId(monday);
 }
 
+function normalizeRoom(room: string): string {
+	const value = (room || '').trim().toLowerCase();
+	if (value === 'room 1' || value === '1' || value === 'living room') return 'Room 1';
+	if (value === 'room 2' || value === '2' || value === 'kitchen') return 'Room 2';
+	if (value === 'room 3' || value === '3' || value === 'dinning room' || value === 'dining room') return 'Room 3';
+	return room;
+}
+
 function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
   const tabs = [
     {id:'family', label:'Family', icon: FamilyIcon, color:'#22c55e'},
@@ -488,7 +496,7 @@ export default function Page(){
 						{/* Room-based view */}
 						<div>
 							{['Room 1', 'Room 2', 'Room 3'].map(room => {
-								const roomMembers = members.filter(m => m.room === room && m.status === 'current');
+								const roomMembers = members.filter(m => normalizeRoom(m.room) === room && m.status === 'current');
 								const isExpanded = expandedRoom === room;
 								return (
 									<div key={room} style={{marginBottom:16}}>
@@ -625,7 +633,6 @@ export default function Page(){
 						{cleaningError && <p style={{color:'#f87171'}}>{cleaningError}</p>}
 						{cleaningSchedule.map(record => {
 							const meta = CLEANING_META[record.area];
-							const assignedMember = members.find(m => m.room === record.assignedRoom && m.status === 'current');
 							return (
 								<div key={record.area} style={{
 									background: record.completed ? '#052e16' : '#1f2937',
@@ -638,9 +645,6 @@ export default function Page(){
 										<div>
 											<p style={{margin:'0 0 4px 0', fontSize:16, fontWeight:600}}>{meta.icon} {meta.label}</p>
 											<p style={{margin:'0 0 2px 0', fontSize:13, color:'#9ca3af'}}>{record.assignedRoom}</p>
-											<p style={{margin:0, fontSize:12, color: assignedMember ? '#d1d5db' : '#6b7280'}}>
-												{assignedMember ? assignedMember.name : 'No current resident'}
-											</p>
 										</div>
 										<button
 											onClick={() => handleCleaningToggle(record.area)}

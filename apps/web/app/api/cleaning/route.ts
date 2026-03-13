@@ -1,7 +1,7 @@
 import connectToDatabase from '../../../../../packages/db/mongodb';
 import CleaningLogModel from '../../../../../packages/db/models/CleaningLog';
 
-const AREAS = ['dining', 'living', 'kitchen'] as const;
+const AREAS = ['living', 'kitchen', 'dining'] as const;
 type CleaningArea = typeof AREAS[number];
 const ROOMS = ['Room 1', 'Room 2', 'Room 3'];
 
