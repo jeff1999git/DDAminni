@@ -1,0 +1,10 @@
+node_modules
+.next
+apps/web/.next
+coverage
+dist
+build
+*.log
+*.tsbuildinfo
+.env
+.env.*

@@ -1,24 +1,34 @@
 import mongoose from 'mongoose';
 
-let isConnected = false;
+type MongooseCache = {
+	conn: typeof mongoose | null;
+	promise: Promise<typeof mongoose> | null;
+};
+
+const globalForMongoose = globalThis as typeof globalThis & {
+	__mongooseCache?: MongooseCache;
+};
+
+const cache: MongooseCache = globalForMongoose.__mongooseCache ?? { conn: null, promise: null };
+globalForMongoose.__mongooseCache = cache;
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
-	const uri = process.env.MONGODB_URI || process.env.mongodb_uri || process.env.mongodb_uro;
+	const uri = process.env.MONGODB_URI;
 	if (!uri) {
-		throw new Error('MongoDB URI is not defined. Set MONGODB_URI (or mongodb_uri/mongodb_uro).');
+		throw new Error('MongoDB URI is not defined. Set MONGODB_URI.');
 	}
 
-	if (isConnected || mongoose.connection.readyState === 1) {
-		isConnected = true;
-		return mongoose;
+	if (cache.conn) {
+		return cache.conn;
 	}
 
-	await mongoose.connect(uri, {
-		// use default options; mongoose 6+ doesn't require these flags
-	} as mongoose.ConnectOptions);
+	if (!cache.promise) {
+		cache.promise = mongoose.connect(uri).then(() => mongoose);
+	}
 
-	isConnected = true;
-	return mongoose;
+	cache.conn = await cache.promise;
+	cache.promise = null;
+	return cache.conn;
 }
 
 export default connectToDatabase;
