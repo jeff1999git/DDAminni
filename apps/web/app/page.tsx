@@ -28,6 +28,8 @@ type StickyNote = {
   createdAt: string;
 };
 
+const CLEANING_WEEK_LIMIT = 4;
+
 function FamilyIcon({color}: {color: string}) {
   return (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -120,6 +122,23 @@ function shiftWeek(weekId: string, delta: number): string {
   return getISOWeekId(monday);
 }
 
+function getWeekStartDate(weekId: string): Date {
+	const [yearStr, weekStr] = weekId.split('-W');
+	const year = parseInt(yearStr);
+	const week = parseInt(weekStr);
+	const jan4 = new Date(Date.UTC(year, 0, 4));
+	const dayOfJan4 = jan4.getUTCDay() || 7;
+	const monday = new Date(jan4);
+	monday.setUTCDate(jan4.getUTCDate() - dayOfJan4 + 1 + (week - 1) * 7);
+	return monday;
+}
+
+function getWeekDistance(baseWeekId: string, targetWeekId: string): number {
+	const base = getWeekStartDate(baseWeekId);
+	const target = getWeekStartDate(targetWeekId);
+	return Math.round((target.getTime() - base.getTime()) / (7 * 24 * 60 * 60 * 1000));
+}
+
 function normalizeRoom(room: string): string {
 	const value = (room || '').trim().toLowerCase();
 	if (value === 'room 1' || value === '1' || value === 'living room') return 'Room 1';
@@ -191,6 +210,10 @@ export default function Page(){
 	const [stickyNotesError, setStickyNotesError] = useState('');
 	const [stickyFormData, setStickyFormData] = useState({name:'', description:''});
 	const [showStickyModal, setShowStickyModal] = useState(false);
+	const currentCleaningWeek = getISOWeekId(new Date());
+	const cleaningWeekDistance = getWeekDistance(currentCleaningWeek, cleaningWeek);
+	const canViewPrevCleaningWeek = cleaningWeekDistance > -CLEANING_WEEK_LIMIT;
+	const canViewNextCleaningWeek = cleaningWeekDistance < CLEANING_WEEK_LIMIT;
 
 	useEffect(() => {
 		let isMounted = true;
@@ -619,15 +642,27 @@ export default function Page(){
 				{tab === 'cleaning' && (
 					<div>
 						<div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20}}>
-							<button
-								onClick={() => setCleaningWeek(prev => shiftWeek(prev, -1))}
-								style={{padding:'6px 14px', background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:13}}
-							>← Prev</button>
+							{canViewPrevCleaningWeek ? (
+								<button
+									onClick={() => setCleaningWeek(prev => shiftWeek(prev, -1))}
+									style={{padding:'6px 14px', background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:13}}
+								>← Prev</button>
+							) : (
+								<p style={{width:73, margin:0, fontSize:11, color:'#6b7280', textAlign:'left'}}>
+									Past limit
+								</p>
+							)}
 							<p style={{margin:0, fontSize:13, fontWeight:600, textAlign:'center', flex:1}}>{getWeekLabel(cleaningWeek)}</p>
-							<button
-								onClick={() => setCleaningWeek(prev => shiftWeek(prev, 1))}
-								style={{padding:'6px 14px', background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:13}}
-							>Next →</button>
+							{canViewNextCleaningWeek ? (
+								<button
+									onClick={() => setCleaningWeek(prev => shiftWeek(prev, 1))}
+									style={{padding:'6px 14px', background:'#374151', color:'white', border:'none', borderRadius:6, cursor:'pointer', fontSize:13}}
+								>Next →</button>
+							) : (
+								<p style={{width:73, margin:0, fontSize:11, color:'#6b7280', textAlign:'right'}}>
+									Future limit
+								</p>
+							)}
 						</div>
 						{loadingCleaning && <p style={{color:'#d1d5db', textAlign:'center'}}>Loading schedule...</p>}
 						{cleaningError && <p style={{color:'#f87171'}}>{cleaningError}</p>}
