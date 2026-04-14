@@ -253,6 +253,9 @@ export default function Page(){
 	const [expandedPhoneContacts, setExpandedPhoneContacts] = useState(false);
 	const [waterCanQrCode, setWaterCanQrCode] = useState<string>('');
 	const [expandedWaterCan, setExpandedWaterCan] = useState(false);
+	const [editingWaterCanMsg, setEditingWaterCanMsg] = useState(false);
+	const [waterCanMessage, setWaterCanMessage] = useState('For buying 2 water cans pay ₹140 to Farm Shop DD QR Code above and whatsapp screenshot to Farm DD shop');
+	const [editWaterCanMessage, setEditWaterCanMessage] = useState('');
 	const currentCleaningWeek = getISOWeekId(new Date());
 	const cleaningWeekDistance = getWeekDistance(currentCleaningWeek, cleaningWeek);
 	const canViewPrevCleaningWeek = cleaningWeekDistance > -CLEANING_WEEK_LIMIT;
@@ -1115,11 +1118,50 @@ export default function Page(){
 								)}
 
 								<div style={{background: '#1f2937', padding: 16, borderRadius: 8, marginBottom: 16}}>
-									<p style={{margin: 0, fontSize: 14, color: '#d1d5db', textAlign: 'center', lineHeight: 1.5}}>
-										For buying 2 water cans pay ₹140 to Farm Shop DD QR Code above and whatsapp screenshot to Farm DD shop
-									</p>
+									{editingWaterCanMsg ? (
+										<div>
+											<textarea
+												value={editWaterCanMessage}
+												onChange={(e) => setEditWaterCanMessage(e.target.value)}
+												style={{width:'100%', padding:8, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white', minHeight:60, resize:'vertical'}}
+											/>
+											<div style={{display:'flex', gap:8, marginTop:8, justifyContent:'center'}}>
+												<button
+													onClick={() => {
+																if (confirm('Are you sure you want to save this message?')) {
+																	setWaterCanMessage(editWaterCanMessage);
+																	setEditingWaterCanMsg(false);
+																}
+														}}
+													style={{padding:'6px 12px', background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold'}}
+												>
+													Save
+												</button>
+												<button
+													onClick={() => setEditingWaterCanMsg(false)}
+													style={{padding:'6px 12px', background:'#6b7280', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold'}}
+												>
+													Cancel
+												</button>
+											</div>
+										</div>
+									) : (
+										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start', gap:12}}>
+											<p style={{margin: 0, fontSize: 14, color: '#d1d5db', textAlign: 'center', lineHeight: 1.5, flex:1}}>
+												{waterCanMessage}
+											</p>
+											<button
+												onClick={() => {
+													setEditWaterCanMessage(waterCanMessage);
+													setEditingWaterCanMsg(true);
+											}}
+												style={{width:28, height:28, background:'#f59e0b', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold', flexShrink:0}}
+											>
+												✎
+											</button>
+										</div>
+									)}
 								</div>
-
 								<div style={{textAlign: 'center'}}>
 									<a
 										href="https://wa.me/917034727070?text=2%20Water%20Cans%20115A"
