@@ -250,7 +250,7 @@ export default function Page(){
 	]);
 	const [editingContact, setEditingContact] = useState<string | null>(null);
 	const [editContactData, setEditContactData] = useState({name: '', phone: ''});
-	const [expandedPhoneContacts, setExpandedPhoneContacts] = useState(true);
+	const [expandedPhoneContacts, setExpandedPhoneContacts] = useState(false);
 	const [waterCanQrCode, setWaterCanQrCode] = useState<string>('');
 	const [expandedWaterCan, setExpandedWaterCan] = useState(false);
 	const currentCleaningWeek = getISOWeekId(new Date());
@@ -877,7 +877,7 @@ export default function Page(){
 				<div>
 					<h2 style={{marginTop:0, marginBottom:20}}>Terms & Reminders</h2>
 					{/* Phone Contacts Section */}
-					<div style={{marginBottom: 32}}>
+					<div style={{marginBottom: 12}}>
 						<button
 							onClick={() => setExpandedPhoneContacts(!expandedPhoneContacts)}
 							style={{
@@ -932,8 +932,7 @@ export default function Page(){
 													</div>
 												) : (
 													<div style={{marginBottom: 8}}>
-														{contact.name && <p style={{margin:'0 0 4px 0', fontSize:14, color:'#d1d5db'}}>Name: {contact.name}</p>}
-														<p style={{margin:'0 0 4px 0', fontSize:14, color:'#d1d5db'}}>Phone: {maskPhoneNumber(contact.phone)}</p>
+														{contact.name && <p style={{margin:0, fontSize:14, color:'#d1d5db'}}>Name: {contact.name}</p>}
 													</div>
 												)}
 											</div>
@@ -955,24 +954,37 @@ export default function Page(){
 													</>
 												) : (
 													<>
-														<a
-															href={`tel:${contact.phone}`}
-															style={{textDecoration: 'none'}}
-														>
-															<button
-																style={{width:32, height:32, background:'#10b981', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:16, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
-																title="Call"
-															>
-																📞
-															</button>
-														</a>
-														<button
-															onClick={() => handleEditPhoneContact(contact)}
-															style={{width:32, height:32, background:'#f59e0b', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:'bold'}}
-														>
-															✎
-														</button>
-													</>
+												<a
+													href={`tel:${contact.phone}`}
+													style={{textDecoration: 'none'}}
+												>
+													<button
+														style={{width:32, height:32, background:'#10b981', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:16, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
+														title="Call"
+													>
+														📞
+													</button>
+												</a>
+												<a
+													href={`https://wa.me/${contact.phone.replace(/\D/g, '')}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													style={{textDecoration: 'none'}}
+												>
+													<button
+														style={{width:80, height:32, background:'#25d366', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
+														title="WhatsApp"
+													>
+														WhatsApp
+													</button>
+												</a>
+												<button
+													onClick={() => handleEditPhoneContact(contact)}
+													style={{width:32, height:32, background:'#f59e0b', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:'bold'}}
+												>
+													✎
+												</button>
+											</>
 												)}
 											</div>
 										</div>
@@ -983,7 +995,7 @@ export default function Page(){
 					</div>
 
 					{/* Order Drinking Water Can Section */}
-					<div style={{marginBottom: 32}}>
+					<div style={{marginBottom: 12}}>
 						<button
 							onClick={() => setExpandedWaterCan(!expandedWaterCan)}
 							style={{
