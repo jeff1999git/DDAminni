@@ -1,8 +1,9 @@
 "use client";
 
 import React, {useEffect, useState} from 'react';
+import { ImageUpload } from '@/components/ImageUpload';
 
-type Tab = 'family' | 'cleaning' | 'sticky';
+type Tab = 'family' | 'cleaning' | 'sticky' | 'notes';
 
 type FamilyMember = {
   id: string;
@@ -27,6 +28,21 @@ type StickyNote = {
   description: string;
   createdAt: string;
 };
+
+type PhoneContact = {
+  id: string;
+  label: string;
+  name: string;
+  phone: string;
+};
+
+function maskPhoneNumber(phone: string): string {
+  if (!phone) return '';
+  // Show last 4 digits, mask the rest
+  const lastFour = phone.slice(-4);
+  const masked = '*'.repeat(Math.max(0, phone.length - 4)) + lastFour;
+  return masked;
+}
 
 const CLEANING_WEEK_LIMIT = 4;
 
@@ -56,6 +72,17 @@ function StickyIcon({color}: {color: string}) {
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path>
       <polyline points="12 12 12 12"></polyline>
+    </svg>
+  );
+}
+
+function NotesIcon({color}: {color: string}) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 4h16v16H4z" />
+      <path d="M8 8h8" />
+      <path d="M8 12h8" />
+      <path d="M8 16h5" />
     </svg>
   );
 }
@@ -151,7 +178,8 @@ function BottomNav({active, onChange}:{active:Tab; onChange:(t:Tab)=>void}){
   const tabs = [
     {id:'family', label:'Family', icon: FamilyIcon, color:'#22c55e'},
     {id:'cleaning', label:'Cleaning', icon: CleaningIcon, color:'#10b981'},
-    {id:'sticky', label:'Sticky notes', icon: StickyIcon, color:'#84cc16'},
+    {id:'sticky', label:'Sticky', icon: StickyIcon, color:'#84cc16'},
+    {id:'notes', label:'Notes', icon: NotesIcon, color:'#f59e0b'},
   ];
 
   return (
@@ -210,6 +238,24 @@ export default function Page(){
 	const [stickyNotesError, setStickyNotesError] = useState('');
 	const [stickyFormData, setStickyFormData] = useState({name:'', description:''});
 	const [showStickyModal, setShowStickyModal] = useState(false);
+	const [phoneContacts, setPhoneContacts] = useState<PhoneContact[]>([
+		{id: '1', label: 'Farm DD shop', name: '', phone: '+91 70347 27070'},
+		{id: '2', label: 'House Keeping', name: 'Rajeshwari', phone: '+91 95676 90781'},
+		{id: '3', label: 'Pharmacy', name: '', phone: '75599 36560'},
+		{id: '4', label: 'Facility Manager', name: 'Vivek', phone: '9539009040'},
+		{id: '5', label: 'General Maintenance', name: '', phone: '9539009055'},
+		{id: '6', label: 'Security Supervisor', name: 'Sam Jacob', phone: '9539009038'},
+		{id: '7', label: 'Front office', name: 'Sandeep', phone: '9539009020'},
+		{id: '8', label: 'Owner', name: 'Franklin', phone: '+91 85470 23599'},
+	]);
+	const [editingContact, setEditingContact] = useState<string | null>(null);
+	const [editContactData, setEditContactData] = useState({name: '', phone: ''});
+	const [expandedPhoneContacts, setExpandedPhoneContacts] = useState(false);
+	const [waterCanQrCode, setWaterCanQrCode] = useState<string>('');
+	const [expandedWaterCan, setExpandedWaterCan] = useState(false);
+	const [editingWaterCanMsg, setEditingWaterCanMsg] = useState(false);
+	const [waterCanMessage, setWaterCanMessage] = useState('For buying 2 water cans pay ₹140 to Farm Shop DD QR Code above and whatsapp screenshot to Farm DD shop');
+	const [editWaterCanMessage, setEditWaterCanMessage] = useState('');
 	const currentCleaningWeek = getISOWeekId(new Date());
 	const cleaningWeekDistance = getWeekDistance(currentCleaningWeek, cleaningWeek);
 	const canViewPrevCleaningWeek = cleaningWeekDistance > -CLEANING_WEEK_LIMIT;
@@ -301,6 +347,34 @@ export default function Page(){
 		loadStickyNotes();
 		return () => { isMounted = false; };
 	}, [tab]);
+
+	useEffect(() => {
+		const savedContacts = typeof window !== 'undefined' ? window.localStorage.getItem('dda-phone-contacts') : null;
+		if (savedContacts) {
+			try {
+				setPhoneContacts(JSON.parse(savedContacts));
+			} catch {
+				// Keep default contacts if parsing fails
+			}
+		}
+	}, []);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		window.localStorage.setItem('dda-phone-contacts', JSON.stringify(phoneContacts));
+	}, [phoneContacts]);
+
+	useEffect(() => {
+		const savedQrCode = typeof window !== 'undefined' ? window.localStorage.getItem('dda-water-can-qr') : null;
+		if (savedQrCode) {
+			setWaterCanQrCode(savedQrCode);
+		}
+	}, []);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		window.localStorage.setItem('dda-water-can-qr', waterCanQrCode);
+	}, [waterCanQrCode]);
 
 	const handleAddMember = async () => {
 		if (!formData.name.trim() || (formData.status === 'current' && !formData.room)) return;
@@ -416,6 +490,28 @@ export default function Page(){
 		}
 	};
 
+	const handleEditPhoneContact = (contact: PhoneContact) => {
+		setEditingContact(contact.id);
+		setEditContactData({name: contact.name, phone: contact.phone});
+	};
+
+	const handleSavePhoneContact = () => {
+		if (window.confirm('Are you sure you want to save these changes?')) {
+			setPhoneContacts(phoneContacts.map(contact =>
+				contact.id === editingContact
+					? {...contact, name: editContactData.name, phone: editContactData.phone}
+					: contact
+			));
+			setEditingContact(null);
+			setEditContactData({name: '', phone: ''});
+		}
+	};
+
+	const handleCancelEditPhoneContact = () => {
+		setEditingContact(null);
+		setEditContactData({name: '', phone: ''});
+	};
+
 	const handleCloseModal = () => {
 		setShowModal(false);
 		setEditId(null);
@@ -444,7 +540,7 @@ export default function Page(){
 		<main style={{paddingBottom: 100, paddingTop:20, paddingLeft:16, paddingRight:16}}>
 			<header style={{marginBottom:18}}>
 				<h1 style={{margin:0,fontSize:20}}>DD അമ്മിണി</h1>
-				<p style={{margin:'4px 0 0 0', fontSize:13, color:'#9ca3af'}}>115 A Cleaning Assistant</p>
+				<p style={{margin:'4px 0 0 0', fontSize:13, color:'#9ca3af'}}>115 A Assistant</p>
 			</header>
 
 			<section style={{minHeight: '60vh'}}>
@@ -779,9 +875,321 @@ export default function Page(){
 						)}
 					</div>
 				)}
-			</section>
 
-			{tab === 'family' && (
+			{tab === 'notes' && (
+				<div>
+					<h2 style={{marginTop:0, marginBottom:20}}>Terms & Reminders</h2>
+					{/* Phone Contacts Section */}
+					<div style={{marginBottom: 12}}>
+						<button
+							onClick={() => setExpandedPhoneContacts(!expandedPhoneContacts)}
+							style={{
+								width:'100%',
+								background:'#1f2937',
+								padding:14,
+								border:'none',
+								borderRadius:8,
+								borderLeft: `4px solid #fbbf24`,
+								textAlign:'left',
+								cursor:'pointer',
+								display:'flex',
+								justifyContent:'space-between',
+								alignItems:'center',
+								marginBottom: expandedPhoneContacts ? 0 : 0
+							}}
+						>
+							<div>
+								<p style={{margin:0, fontWeight:600, color:'white', marginBottom:4}}>Useful Phone Numbers</p>
+								<p style={{margin:0, fontSize:12, color:'#9ca3af'}}>
+									{phoneContacts.length} contacts
+								</p>
+							</div>
+							<span style={{color:'#fbbf24', fontSize:18}}>
+								{expandedPhoneContacts ? '▼' : '▶'}
+							</span>
+						</button>
+						
+						{expandedPhoneContacts && (
+							<div style={{background:'#374151', marginTop:0, borderRadius: '0 0 8px 8px', padding:12}}>
+								{phoneContacts.map(contact => (
+									<div key={contact.id} style={{background:'#111827', padding:16, marginBottom:12, borderRadius:10, border:'1px solid #374151'}}>
+										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start', gap:12}}>
+											<div style={{flex:1}}>
+												<p style={{margin:'0 0 8px 0', fontSize:15, fontWeight:700, color:'#fbbf24'}}>{contact.label}</p>
+												{editingContact === contact.id ? (
+													<div style={{marginBottom: 12}}>
+														<input
+															type="text"
+															placeholder="Name (optional)"
+															value={editContactData.name}
+															onChange={(e) => setEditContactData({...editContactData, name: e.target.value})}
+															style={{width:'100%', padding:8, marginBottom:8, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
+														/>
+														<input
+															type="tel"
+															placeholder="Phone number"
+															value={editContactData.phone}
+															onChange={(e) => setEditContactData({...editContactData, phone: e.target.value})}
+															style={{width:'100%', padding:8, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white'}}
+														/>
+													</div>
+												) : (
+													<div style={{marginBottom: 8}}>
+														{contact.name && <p style={{margin:0, fontSize:14, color:'#d1d5db'}}>Name: {contact.name}</p>}
+													</div>
+												)}
+											</div>
+											<div style={{display:'flex', gap:6}}>
+												{editingContact === contact.id ? (
+													<>
+														<button
+															onClick={handleSavePhoneContact}
+															style={{width:32, height:32, background:'#22c55e', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:'bold'}}
+														>
+															✓
+														</button>
+														<button
+															onClick={handleCancelEditPhoneContact}
+															style={{width:32, height:32, background:'#6b7280', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:'bold'}}
+														>
+															×
+														</button>
+													</>
+												) : (
+													<>
+												<a
+													href={`tel:${contact.phone}`}
+													style={{textDecoration: 'none'}}
+												>
+													<button
+														style={{width:32, height:32, background:'#10b981', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:16, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
+														title="Call"
+													>
+														📞
+													</button>
+												</a>
+												<a
+													href={`https://wa.me/${contact.phone.replace(/\D/g, '')}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													style={{textDecoration: 'none'}}
+												>
+													<button
+														style={{width:80, height:32, background:'#25d366', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
+														title="WhatsApp"
+													>
+														WhatsApp
+													</button>
+												</a>
+												<button
+													onClick={() => handleEditPhoneContact(contact)}
+													style={{width:32, height:32, background:'#f59e0b', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:'bold'}}
+												>
+													✎
+												</button>
+											</>
+												)}
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						)}
+					</div>
+
+					{/* Order Drinking Water Can Section */}
+					<div style={{marginBottom: 12}}>
+						<button
+							onClick={() => setExpandedWaterCan(!expandedWaterCan)}
+							style={{
+								width:'100%',
+								background:'#1f2937',
+								padding:14,
+								border:'none',
+								borderRadius:8,
+								borderLeft: `4px solid #06b6d4`,
+								textAlign:'left',
+								cursor:'pointer',
+								display:'flex',
+								justifyContent:'space-between',
+								alignItems:'center',
+								marginBottom: expandedWaterCan ? 0 : 0
+							}}
+						>
+							<div>
+								<p style={{margin:0, fontWeight:600, color:'white', marginBottom:4}}>Order Drinking Water Can</p>
+								<p style={{margin:0, fontSize:12, color:'#9ca3af'}}>
+									{waterCanQrCode ? 'QR Code uploaded' : 'Upload QR code to order'}
+								</p>
+							</div>
+							<span style={{color:'#06b6d4', fontSize:18}}>
+								{expandedWaterCan ? '▼' : '▶'}
+							</span>
+						</button>
+
+						{expandedWaterCan && (
+							<div style={{background:'#374151', marginTop:0, borderRadius: '0 0 8px 8px', padding:16}}>
+								<div style={{textAlign: 'center', marginBottom: 16}}>
+									<ImageUpload
+										onUploadSuccess={(url) => setWaterCanQrCode(url)}
+										onUploadError={(error) => alert(`Upload failed: ${error}`)}
+										placeholder="Upload QR Code"
+										currentImage={waterCanQrCode}
+										width={180}
+										height={180}
+										className="inline-block"
+										/>
+									</div>
+
+									{waterCanQrCode && (
+										<div style={{display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 16}}>
+											<button
+												onClick={() => {
+												const link = document.createElement('a');
+												link.href = waterCanQrCode;
+												link.download = 'water-can-qr-code.jpg';
+												link.click();
+											}}
+											style={{
+                    width: 44,
+                    height: 44,
+                    background: '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 18,
+                }}
+										>
+											⬇
+										</button>
+										<button
+											onClick={() => {
+												if (!window.confirm('Replace the existing QR code with a new one?')) {
+													return;
+												}
+												const input = document.createElement('input');
+												input.type = 'file';
+												input.accept = 'image/*';
+												input.onchange = (e) => {
+													const file = (e.target as HTMLInputElement).files?.[0];
+													if (file) {
+														const formData = new FormData();
+														formData.append('file', file);
+														fetch('/api/upload', {
+															method: 'POST',
+															body: formData,
+														})
+														.then(res => res.json())
+														.then(data => {
+															if (data.success) {
+																setWaterCanQrCode(data.url);
+															} else {
+																alert('Upload failed: ' + data.error);
+															}
+														})
+														.catch(error => {
+															alert('Upload failed: ' + error.message);
+														});
+													}
+												};
+												input.click();
+											}}
+											style={{
+                    width: 44,
+                    height: 44,
+                    background: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 10,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 18,
+                }}
+										>
+											✎
+										</button>
+									</div>
+								)}
+
+								<div style={{background: '#1f2937', padding: 16, borderRadius: 8, marginBottom: 16}}>
+									{editingWaterCanMsg ? (
+										<div>
+											<textarea
+												value={editWaterCanMessage}
+												onChange={(e) => setEditWaterCanMessage(e.target.value)}
+												style={{width:'100%', padding:8, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white', minHeight:60, resize:'vertical'}}
+											/>
+											<div style={{display:'flex', gap:8, marginTop:8, justifyContent:'center'}}>
+												<button
+													onClick={() => {
+																if (confirm('Are you sure you want to save this message?')) {
+																	setWaterCanMessage(editWaterCanMessage);
+																	setEditingWaterCanMsg(false);
+																}
+														}}
+													style={{padding:'6px 12px', background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold'}}
+												>
+													Save
+												</button>
+												<button
+													onClick={() => setEditingWaterCanMsg(false)}
+													style={{padding:'6px 12px', background:'#6b7280', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold'}}
+												>
+													Cancel
+												</button>
+											</div>
+										</div>
+									) : (
+										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start', gap:12}}>
+											<p style={{margin: 0, fontSize: 14, color: '#d1d5db', textAlign: 'center', lineHeight: 1.5, flex:1}}>
+												{waterCanMessage}
+											</p>
+											<button
+												onClick={() => {
+													setEditWaterCanMessage(waterCanMessage);
+													setEditingWaterCanMsg(true);
+											}}
+												style={{width:28, height:28, background:'#f59e0b', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold', flexShrink:0}}
+											>
+												✎
+											</button>
+										</div>
+									)}
+								</div>
+								<div style={{textAlign: 'center'}}>
+									<a
+										href="https://wa.me/917034727070?text=2%20Water%20Cans%20115A"
+										target="_blank"
+										rel="noopener noreferrer"
+										style={{
+											display: 'inline-block',
+											padding: '12px 24px',
+											background: '#25d366',
+											color: 'white',
+											textDecoration: 'none',
+											borderRadius: 8,
+											fontSize: 16,
+											fontWeight: 600,
+											boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+										}}
+									>
+										💬 WhatsApp Farm DD Shop
+									</a>
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+			)}
+		</section>
+
+		{tab === 'family' && (
 				<button 
 					onClick={() => setShowModal(true)}
 					style={{
