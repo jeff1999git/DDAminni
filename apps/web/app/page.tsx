@@ -1027,6 +1027,19 @@ export default function Page(){
 							</span>
 						</button>
 
+						{waterCanQrCode && (
+							<div style={{marginTop: 12, textAlign: 'center'}}>
+								<div style={{display: 'inline-block', padding: 12, background: '#111827', border: '1px solid #4b5563', borderRadius: 12}}>
+									<p style={{margin: 0, marginBottom: 8, fontSize: 13, color: '#d1d5db', fontWeight: 500}}>Payment QR Code</p>
+									<img
+										src={waterCanQrCode}
+										alt="Water can payment QR code"
+										style={{width: 150, height: 150, objectFit: 'contain', borderRadius: 8, background: '#f8fafc'}}
+									/>
+								</div>
+							</div>
+						)}
+
 						{expandedWaterCan && (
 							<div style={{background:'#374151', marginTop:0, borderRadius: '0 0 8px 8px', padding:16}}>
 								<div style={{textAlign: 'center', marginBottom: 16}}>
