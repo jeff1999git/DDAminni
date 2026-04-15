@@ -31,9 +31,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   const [preview, setPreview] = useState<string | null>(currentImage || null);
 
   React.useEffect(() => {
-    if (currentImage) {
-      setPreview(currentImage);
-    }
+    setPreview(currentImage || null);
   }, [currentImage]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
