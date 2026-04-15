@@ -6,6 +6,7 @@ import { useImageUpload } from '@/lib/useImageUpload';
 interface ImageUploadProps {
   onUploadSuccess?: (url: string, publicId: string) => void;
   onUploadError?: (error: string) => void;
+  onUploadingChange?: (uploading: boolean) => void;
   className?: string;
   accept?: string;
   maxSize?: string;
@@ -18,6 +19,7 @@ interface ImageUploadProps {
 export const ImageUpload: React.FC<ImageUploadProps> = ({
   onUploadSuccess,
   onUploadError,
+  onUploadingChange,
   className = '',
   accept = 'image/*',
   maxSize = '10MB',
@@ -33,6 +35,10 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   React.useEffect(() => {
     setPreview(currentImage || null);
   }, [currentImage]);
+
+  React.useEffect(() => {
+    onUploadingChange?.(uploading);
+  }, [uploading, onUploadingChange]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -54,6 +60,11 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
 
   return (
     <div className={`image-upload ${className}`}>
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <input
         ref={fileInputRef}
         type="file"
@@ -86,10 +97,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              opacity: uploading ? 0.5 : 1,
+              transition: 'opacity 0.2s ease',
             }}
           />
         ) : (
-          <div style={{ textAlign: 'center', color: '#6b7280' }}>
+          <div style={{ textAlign: 'center', color: '#6b7280', opacity: uploading ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
             <div style={{ fontSize: '24px', marginBottom: '4px' }}>📷</div>
             <div style={{ fontSize: '12px' }}>{placeholder}</div>
             <div style={{ fontSize: '10px', marginTop: '2px' }}>Max: {maxSize}</div>
@@ -97,6 +110,39 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         )}
 
         {uploading && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
+              borderRadius: '6px',
+            }}
+          >
+            <div
+              style={{
+                width: '30px',
+                height: '30px',
+                border: '3px solid #e5e7eb',
+                borderTop: '3px solid #3b82f6',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+              }}
+            />
+            <div style={{ marginTop: '8px', fontSize: '12px', color: 'white', fontWeight: 500 }}>
+              {progress}%
+            </div>
+          </div>
+        )}
+
+        {uploading && (
+
           <div
             style={{
               position: 'absolute',
