@@ -31,9 +31,12 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   const { uploadImage, uploading, progress } = useImageUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(currentImage || null);
+  const [imageError, setImageError] = useState(false);
+  const showPreview = !!preview && !imageError;
 
   React.useEffect(() => {
     setPreview(currentImage || null);
+    setImageError(false);
   }, [currentImage]);
 
   React.useEffect(() => {
@@ -89,10 +92,14 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           overflow: 'hidden',
         }}
       >
-        {preview ? (
+        {showPreview ? (
           <img
-            src={preview}
+            src={preview as string}
             alt="Preview"
+            onError={() => {
+              console.error('Failed to load image from URL:', preview);
+              setImageError(true);
+            }}
             style={{
               width: '100%',
               height: '100%',
@@ -104,7 +111,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         ) : (
           <div style={{ textAlign: 'center', color: '#6b7280', opacity: uploading ? 0.5 : 1, transition: 'opacity 0.2s ease' }}>
             <div style={{ fontSize: '24px', marginBottom: '4px' }}>📷</div>
-            <div style={{ fontSize: '12px' }}>{placeholder}</div>
+            <div style={{ fontSize: '12px' }}>{imageError ? 'Unable to load preview. Please reupload.' : placeholder}</div>
             <div style={{ fontSize: '10px', marginTop: '2px' }}>Max: {maxSize}</div>
           </div>
         )}

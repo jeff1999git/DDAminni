@@ -44,6 +44,7 @@ export const useImageUpload = () => {
         throw new Error(result.error || 'Upload failed');
       }
 
+      console.log('Upload successful, received URL:', result.url);
       setProgress(100);
       return {
         success: true,

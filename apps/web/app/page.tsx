@@ -368,13 +368,19 @@ export default function Page(){
 	useEffect(() => {
 		const savedQrCode = typeof window !== 'undefined' ? window.localStorage.getItem('dda-water-can-qr') : null;
 		if (savedQrCode) {
+			console.log('Loaded QR code from localStorage:', savedQrCode);
 			setWaterCanQrCode(savedQrCode);
+		} else {
+			console.log('No saved QR code found in localStorage');
 		}
 	}, []);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
-		window.localStorage.setItem('dda-water-can-qr', waterCanQrCode);
+		if (waterCanQrCode) {
+			console.log('Saving QR code to localStorage:', waterCanQrCode);
+			window.localStorage.setItem('dda-water-can-qr', waterCanQrCode);
+		}
 	}, [waterCanQrCode]);
 
 	const handleAddMember = async () => {
@@ -1032,8 +1038,14 @@ export default function Page(){
 							<div style={{background:'#374151', marginTop:0, borderRadius: '0 0 8px 8px', padding:16}}>
 								<div style={{textAlign: 'center', marginBottom: 16}}>
 									<ImageUpload
-										onUploadSuccess={(url) => setWaterCanQrCode(url)}
-										onUploadError={(error) => alert(`Upload failed: ${error}`)}
+										onUploadSuccess={(url) => {
+											console.log('QR code uploaded successfully:', url);
+											setWaterCanQrCode(url);
+										}}
+										onUploadError={(error) => {
+											console.error('QR code upload failed:', error);
+											alert(`Upload failed: ${error}`);
+										}}
 										onUploadingChange={(uploading) => setWaterCanQrUploading(uploading)}
 										placeholder="Upload QR Code"
 										currentImage={waterCanQrCode}
