@@ -250,9 +250,12 @@ export default function Page(){
 	]);
 	const [editingContact, setEditingContact] = useState<string | null>(null);
 	const [editContactData, setEditContactData] = useState({name: '', phone: ''});
-	const [expandedPhoneContacts, setExpandedPhoneContacts] = useState(true);
+	const [expandedPhoneContacts, setExpandedPhoneContacts] = useState(false);
 	const [waterCanQrCode, setWaterCanQrCode] = useState<string>('');
 	const [expandedWaterCan, setExpandedWaterCan] = useState(false);
+	const [editingWaterCanMsg, setEditingWaterCanMsg] = useState(false);
+	const [waterCanMessage, setWaterCanMessage] = useState('For buying 2 water cans pay ₹140 to Farm Shop DD QR Code above and whatsapp screenshot to Farm DD shop');
+	const [editWaterCanMessage, setEditWaterCanMessage] = useState('');
 	const currentCleaningWeek = getISOWeekId(new Date());
 	const cleaningWeekDistance = getWeekDistance(currentCleaningWeek, cleaningWeek);
 	const canViewPrevCleaningWeek = cleaningWeekDistance > -CLEANING_WEEK_LIMIT;
@@ -877,7 +880,7 @@ export default function Page(){
 				<div>
 					<h2 style={{marginTop:0, marginBottom:20}}>Terms & Reminders</h2>
 					{/* Phone Contacts Section */}
-					<div style={{marginBottom: 32}}>
+					<div style={{marginBottom: 12}}>
 						<button
 							onClick={() => setExpandedPhoneContacts(!expandedPhoneContacts)}
 							style={{
@@ -932,8 +935,7 @@ export default function Page(){
 													</div>
 												) : (
 													<div style={{marginBottom: 8}}>
-														{contact.name && <p style={{margin:'0 0 4px 0', fontSize:14, color:'#d1d5db'}}>Name: {contact.name}</p>}
-														<p style={{margin:'0 0 4px 0', fontSize:14, color:'#d1d5db'}}>Phone: {maskPhoneNumber(contact.phone)}</p>
+														{contact.name && <p style={{margin:0, fontSize:14, color:'#d1d5db'}}>Name: {contact.name}</p>}
 													</div>
 												)}
 											</div>
@@ -955,24 +957,37 @@ export default function Page(){
 													</>
 												) : (
 													<>
-														<a
-															href={`tel:${contact.phone}`}
-															style={{textDecoration: 'none'}}
-														>
-															<button
-																style={{width:32, height:32, background:'#10b981', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:16, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
-																title="Call"
-															>
-																📞
-															</button>
-														</a>
-														<button
-															onClick={() => handleEditPhoneContact(contact)}
-															style={{width:32, height:32, background:'#f59e0b', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:'bold'}}
-														>
-															✎
-														</button>
-													</>
+												<a
+													href={`tel:${contact.phone}`}
+													style={{textDecoration: 'none'}}
+												>
+													<button
+														style={{width:32, height:32, background:'#10b981', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:16, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
+														title="Call"
+													>
+														📞
+													</button>
+												</a>
+												<a
+													href={`https://wa.me/${contact.phone.replace(/\D/g, '')}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													style={{textDecoration: 'none'}}
+												>
+													<button
+														style={{width:80, height:32, background:'#25d366', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:12, fontWeight:'bold', display:'flex', alignItems:'center', justifyContent:'center'}}
+														title="WhatsApp"
+													>
+														WhatsApp
+													</button>
+												</a>
+												<button
+													onClick={() => handleEditPhoneContact(contact)}
+													style={{width:32, height:32, background:'#f59e0b', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontSize:14, fontWeight:'bold'}}
+												>
+													✎
+												</button>
+											</>
 												)}
 											</div>
 										</div>
@@ -983,7 +998,7 @@ export default function Page(){
 					</div>
 
 					{/* Order Drinking Water Can Section */}
-					<div style={{marginBottom: 32}}>
+					<div style={{marginBottom: 12}}>
 						<button
 							onClick={() => setExpandedWaterCan(!expandedWaterCan)}
 							style={{
@@ -1103,11 +1118,50 @@ export default function Page(){
 								)}
 
 								<div style={{background: '#1f2937', padding: 16, borderRadius: 8, marginBottom: 16}}>
-									<p style={{margin: 0, fontSize: 14, color: '#d1d5db', textAlign: 'center', lineHeight: 1.5}}>
-										For buying 2 water cans pay ₹140 to Farm Shop DD QR Code above and whatsapp screenshot to Farm DD shop
-									</p>
+									{editingWaterCanMsg ? (
+										<div>
+											<textarea
+												value={editWaterCanMessage}
+												onChange={(e) => setEditWaterCanMessage(e.target.value)}
+												style={{width:'100%', padding:8, border:'1px solid #d1d5db', borderRadius:6, boxSizing:'border-box', fontSize:14, background:'#374151', color:'white', minHeight:60, resize:'vertical'}}
+											/>
+											<div style={{display:'flex', gap:8, marginTop:8, justifyContent:'center'}}>
+												<button
+													onClick={() => {
+																if (confirm('Are you sure you want to save this message?')) {
+																	setWaterCanMessage(editWaterCanMessage);
+																	setEditingWaterCanMsg(false);
+																}
+														}}
+													style={{padding:'6px 12px', background:'#22c55e', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold'}}
+												>
+													Save
+												</button>
+												<button
+													onClick={() => setEditingWaterCanMsg(false)}
+													style={{padding:'6px 12px', background:'#6b7280', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold'}}
+												>
+													Cancel
+												</button>
+											</div>
+										</div>
+									) : (
+										<div style={{display:'flex', justifyContent:'space-between', alignItems:'start', gap:12}}>
+											<p style={{margin: 0, fontSize: 14, color: '#d1d5db', textAlign: 'center', lineHeight: 1.5, flex:1}}>
+												{waterCanMessage}
+											</p>
+											<button
+												onClick={() => {
+													setEditWaterCanMessage(waterCanMessage);
+													setEditingWaterCanMsg(true);
+											}}
+												style={{width:28, height:28, background:'#f59e0b', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:'bold', flexShrink:0}}
+											>
+												✎
+											</button>
+										</div>
+									)}
 								</div>
-
 								<div style={{textAlign: 'center'}}>
 									<a
 										href="https://wa.me/917034727070?text=2%20Water%20Cans%20115A"
@@ -1131,8 +1185,7 @@ export default function Page(){
 							</div>
 						)}
 					</div>
-
-	
+				</div>
 			)}
 		</section>
 
